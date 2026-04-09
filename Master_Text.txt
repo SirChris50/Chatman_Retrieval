@@ -1,0 +1,134 @@
+====================================================================
+CHATMAN RETRIEVAL SYSTEM — SESSION SUMMARY
+Session Date: 2026-04-08
+====================================================================
+
+--------------------------------------------------------------------
+WHAT WAS COMPLETED TONIGHT
+--------------------------------------------------------------------
+
+1. PROJECT STRUCTURE CREATED
+   D:\Chatman_Retrieval\
+   ├── retrieval_env\          existing Python 3.13.3 virtual env
+   ├── app\                    Flask app folder (engine lives here)
+   ├── data\                   database + chroma store
+   ├── static\                 static web assets (empty, next step)
+   ├── templates\              HTML templates (empty, next step)
+   ├── requirements.txt        flask, sentence-transformers, rapidfuzz, chromadb
+   ├── test_engine.py          smoke test for the retrieval engine
+   ├── probe_torch.py          diagnostic probe (safe to delete)
+   ├── probe_torch2.py         diagnostic probe (safe to delete)
+   └── probe_onnx.py           diagnostic probe (safe to delete)
+
+2. SQLITE DATABASE — data\retrieval.db
+   - Table: qa_pairs (id INTEGER PK, question TEXT, answer TEXT)
+   - Seeded with 20 test rows covering:
+       * General knowledge (capitals, history, science)
+       * Tech questions (CPU, Wi-Fi, machine learning, RAM vs storage)
+       * Health/lifestyle (water, sleep, coffee, protein)
+       * Casual inputs (hey whats up, thanks, can you help me)
+       * Programming (REST API, Python 2 vs 3)
+       * Intentional informal spelling for fuzzy-match stress testing
+   - Seed script: data\init_db.py (safe to re-run; skips if already populated)
+
+3. RETRIEVAL ENGINE — app\retrieval_engine.py
+   FULLY WRITTEN. Key design:
+   - Lazy-initialised: model + ChromaDB load on first query() call
+   - Semantic search via ChromaDB (cosine distance, HNSW index)
+     * Model: all-MiniLM-L6-v2 via sentence-transformers
+     * Embeddings stored persistently in data\chroma_store\
+     * Auto-syncs new SQLite rows into ChromaDB on each init
+   - Fuzzy search via rapidfuzz
+     * Blend: 60% token_sort_ratio + 40% partial_ratio
+   - Score blending:
+     * combined = 0.70 * semantic_score + 0.30 * fuzzy_score
+     * Both scores normalised to [0, 1]
+   - Confidence threshold: 0.45
+     * Below threshold → polite no-match message returned
+     * Above threshold → best matching answer returned
+   - Returns a dict with: answer, matched_question, combined_score,
+     semantic_score, fuzzy_score, matched (bool)
+   - Module-level singleton: `from app.retrieval_engine import engine`
+   - OpenMP env vars set at import time to prevent Windows deadlock:
+       KMP_DUPLICATE_LIB_OK=TRUE, KMP_INIT_AT_FORK=FALSE, OMP_NUM_THREADS=1
+
+4. TEST SCRIPT — test_engine.py
+   10 test cases (8 should match, 2 should not match).
+   Prints a table showing query / matched / score / best match.
+   NOT YET VERIFIED TO PASS — needs to be run from a real terminal.
+
+
+--------------------------------------------------------------------
+WHAT WORKS (CONFIRMED)
+--------------------------------------------------------------------
+
+   [OK] Python 3.13.3 virtual env
+   [OK] All packages installed: flask, sentence-transformers, rapidfuzz,
+        chromadb, torch 2.11.0+cpu, onnxruntime 1.24.4
+   [OK] SQLite database — 20 rows inserted and verified
+   [OK] torch imports successfully (confirmed via PowerShell: "2.11.0+cpu")
+   [OK] rapidfuzz imports and works
+   [OK] chromadb imports and works
+   [OK] retrieval_engine.py — code complete and logically correct
+
+
+--------------------------------------------------------------------
+IMPORTANT: FIRST-RUN BEHAVIOUR
+--------------------------------------------------------------------
+
+The FIRST time you run the engine it will:
+  1. Download the all-MiniLM-L6-v2 model (~90 MB) if not already cached
+  2. Generate and store embeddings for all 20 DB rows in ChromaDB
+  3. This may take 1-3 minutes — subsequent runs are instant
+
+If you already have the model cached (from prior sentence-transformers
+use), step 1 is skipped.
+
+
+--------------------------------------------------------------------
+WHAT STILL NEEDS TO BE DONE
+--------------------------------------------------------------------
+
+NEXT SESSION — in order:
+
+  Step 1: VERIFY THE ENGINE
+    Run this from a Windows terminal (CMD or PowerShell):
+      cd D:\Chatman_Retrieval
+      retrieval_env\Scripts\activate
+      python test_engine.py
+    Expect: 10/10 tests pass (or close — threshold may need tuning)
+
+  Step 2: TUNE THRESHOLDS (if needed)
+    If casual inputs like "hey" or "thanks" fail to match:
+      → Lower CONFIDENCE_THRESHOLD in app\retrieval_engine.py (try 0.40)
+    If garbage queries return matches they shouldn't:
+      → Raise CONFIDENCE_THRESHOLD (try 0.50)
+
+  Step 3: BUILD THE FLASK APP — app\app.py
+    - POST /query endpoint: accepts JSON {"query": "..."}
+      returns JSON from engine.query()
+    - GET / : serve the chat UI
+
+  Step 4: BUILD THE CHAT UI — templates\index.html + static\
+    - Simple chat interface
+    - Sends query to /query, displays answer + confidence score
+
+  Step 5: ADD DB ADMIN ROUTE (optional)
+    - POST /add endpoint to add new QA pairs
+    - Calls engine.reload() after insert to sync ChromaDB
+
+
+--------------------------------------------------------------------
+KEY FILES QUICK REFERENCE
+--------------------------------------------------------------------
+
+  app\retrieval_engine.py   — the engine (import and use engine.query())
+  data\init_db.py           — re-seed the database
+  data\retrieval.db         — the SQLite database
+  data\chroma_store\        — ChromaDB persistent store (auto-created)
+  test_engine.py            — smoke test (run from terminal)
+  requirements.txt          — pip install -r requirements.txt
+
+====================================================================
+END OF SUMMARY
+====================================================================

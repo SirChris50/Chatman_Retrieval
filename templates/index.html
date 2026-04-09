@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatman Retrieval</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0d1b2a;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: #112240;
+      border-bottom: 1px solid #1e3a5f;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #a8c8f0;
+      letter-spacing: 0.04em;
+    }
+
+    #copy-btn {
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      background: #1e3a5f;
+      color: #a8c8f0;
+      border: 1px solid #2e5080;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    #copy-btn:hover { background: #2e5080; color: #cde4ff; }
+    #copy-btn:active { background: #3a6090; }
+
+    #chat-history {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    #chat-history::-webkit-scrollbar { width: 6px; }
+    #chat-history::-webkit-scrollbar-track { background: transparent; }
+    #chat-history::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 3px; }
+
+    .bubble-row {
+      display: flex;
+      width: 100%;
+    }
+
+    .bubble-row.user { justify-content: flex-start; }
+    .bubble-row.bot  { justify-content: flex-start; }
+
+    .bubble {
+      max-width: 72%;
+      padding: 11px 16px;
+      border-radius: 16px;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .bubble-row.user .bubble {
+      background: #1a4a7a;
+      color: #ddeeff;
+      border-bottom-left-radius: 4px;
+    }
+
+    .bubble-row.bot .bubble {
+      background: #112240;
+      color: #c8dff5;
+      border-bottom-left-radius: 4px;
+      border: 1px solid #1e3a5f;
+    }
+
+    .bubble.no-match { color: #7a9bbf; font-style: italic; }
+    .bubble.error    { color: #e07070; }
+    .bubble.thinking { color: #4e7a9e; font-style: italic; }
+
+    .input-bar {
+      display: flex;
+      gap: 8px;
+      padding: 14px 16px;
+      background: #112240;
+      border-top: 1px solid #1e3a5f;
+      flex-shrink: 0;
+    }
+
+    #q {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 0.97rem;
+      background: #0d1b2a;
+      color: #c8dff5;
+      border: 1px solid #1e3a5f;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #q::placeholder { color: #3d6080; }
+    #q:focus { border-color: #3a7abf; }
+
+    #ask-btn {
+      padding: 10px 20px;
+      font-size: 0.97rem;
+      background: #1a4a7a;
+      color: #cde4ff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    #ask-btn:hover    { background: #2260a0; }
+    #ask-btn:disabled { background: #1a3050; color: #3d6080; cursor: default; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Chatman Retrieval</h1>
+    <button id="copy-btn" onclick="copyChat()">Copy Chat</button>
+  </header>
+
+  <div id="chat-history"></div>
+
+  <div class="input-bar">
+    <input type="text" id="q" placeholder="Ask a question…" autocomplete="off" />
+    <button id="ask-btn" onclick="ask()">Ask</button>
+  </div>
+
+  <script>
+    const input   = document.getElementById("q");
+    const askBtn  = document.getElementById("ask-btn");
+    const history = document.getElementById("chat-history");
+
+    // [ { role: "user"|"bot", text: string } ]
+    const transcript = [];
+
+    input.addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
+
+    function appendBubble(role, text, cls = "") {
+      const row = document.createElement("div");
+      row.className = `bubble-row ${role}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = `bubble${cls ? " " + cls : ""}`;
+      bubble.textContent = text;
+
+      row.appendChild(bubble);
+      history.appendChild(row);
+      history.scrollTop = history.scrollHeight;
+      return bubble;
+    }
+
+    async function ask() {
+      const query = input.value.trim();
+      if (!query) return;
+
+      input.value = "";
+      askBtn.disabled = true;
+
+      appendBubble("user", query);
+      transcript.push({ role: "user", text: query });
+
+      const thinkingBubble = appendBubble("bot", "Searching…", "thinking");
+
+      try {
+        const res  = await fetch("/query", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query })
+        });
+        const data = await res.json();
+
+        thinkingBubble.closest(".bubble-row").remove();
+
+        let answerText, cls;
+        if (data.error) {
+          answerText = data.error;
+          cls = "error";
+        } else {
+          answerText = data.answer;
+          cls = data.matched ? "" : "no-match";
+        }
+
+        appendBubble("bot", answerText, cls);
+        transcript.push({ role: "bot", text: answerText });
+
+      } catch {
+        thinkingBubble.closest(".bubble-row").remove();
+        const errText = "Request failed. Is the server running?";
+        appendBubble("bot", errText, "error");
+        transcript.push({ role: "bot", text: errText });
+      } finally {
+        askBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    function copyChat() {
+      if (!transcript.length) return;
+      const text = transcript.map(m =>
+        (m.role === "user" ? "You: " : "Bot: ") + m.text
+      ).join("\n\n");
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById("copy-btn");
+        const orig = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(() => { btn.textContent = orig; }, 1800);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Claude Code working files
+.claude/
+
+# Virtual environment
+retrieval_env/
+
+# Chroma vector store
+chroma_store/
+
+# SQLite database
+retrieval.db
+
+# Python cache
+__pycache__/
+*.py[cod]
