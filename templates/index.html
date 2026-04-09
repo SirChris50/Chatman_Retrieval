@@ -33,7 +33,13 @@
       letter-spacing: 0.04em;
     }
 
-    #copy-btn {
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #copy-btn, .admin-link {
       padding: 6px 14px;
       font-size: 0.82rem;
       background: #1e3a5f;
@@ -42,9 +48,11 @@
       border-radius: 6px;
       cursor: pointer;
       transition: background 0.15s, color 0.15s;
+      text-decoration: none;
+      display: inline-block;
     }
 
-    #copy-btn:hover { background: #2e5080; color: #cde4ff; }
+    #copy-btn:hover, .admin-link:hover { background: #2e5080; color: #cde4ff; }
     #copy-btn:active { background: #3a6090; }
 
     #chat-history {
@@ -139,7 +147,10 @@
 
   <header>
     <h1>Chatman Retrieval</h1>
-    <button id="copy-btn" onclick="copyChat()">Copy Chat</button>
+    <div class="header-actions">
+      <a class="admin-link" href="/admin">Admin</a>
+      <button id="copy-btn" onclick="copyChat()">Copy Chat</button>
+    </div>
   </header>
 
   <div id="chat-history"></div>

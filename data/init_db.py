@@ -30,9 +30,24 @@ TEST_DATA = [
     ("what can you do", "I can answer questions, look things up, and help you find information. Just ask!"),
     ("thanks", "You're welcome! Let me know if there's anything else I can help with."),
 
+    # Identity
+    ("Who built you?", "I was built by Christopher Chatman."),
+    ("Who made you?", "I was built by Christopher Chatman."),
+    ("Who created you?", "I was built by Christopher Chatman."),
+    ("Who are you?", "I was built by Christopher Chatman."),
+
     # Programming
     ("What is a REST API?", "A REST API is a way for applications to communicate over HTTP using standard methods like GET, POST, PUT, and DELETE to create, read, update, and delete resources."),
     ("Whats the difference between Python 2 and Python 3?", "Python 3 is the current version and introduced many improvements over Python 2, including better Unicode support, print as a function, and improved integer division. Python 2 reached end-of-life in 2020."),
+]
+
+
+# These rows are always inserted if not already present, even on an existing DB.
+PERMANENT_PAIRS = [
+    ("Who built you?",   "I was built by Christopher Chatman."),
+    ("Who made you?",    "I was built by Christopher Chatman."),
+    ("Who created you?", "I was built by Christopher Chatman."),
+    ("Who are you?",     "I was built by Christopher Chatman."),
 ]
 
 
@@ -57,6 +72,17 @@ def init_db():
         print(f"Inserted {len(TEST_DATA)} rows.")
     else:
         print("Database already populated — skipping seed.")
+
+    # Always ensure permanent pairs exist.
+    existing = {row[0].lower() for row in cur.execute("SELECT question FROM qa_pairs").fetchall()}
+    added = 0
+    for q, a in PERMANENT_PAIRS:
+        if q.lower() not in existing:
+            cur.execute("INSERT INTO qa_pairs (question, answer) VALUES (?, ?)", (q, a))
+            existing.add(q.lower())
+            added += 1
+    if added:
+        print(f"Inserted {added} permanent pair(s).")
 
     conn.commit()
     conn.close()
