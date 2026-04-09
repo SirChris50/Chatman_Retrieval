@@ -89,7 +89,10 @@ class RetrievalEngine:
         if self._model is not None:
             return  # already initialised
 
-        self._model = SentenceTransformer(MODEL_NAME)
+        self._model = SentenceTransformer(
+            MODEL_NAME,
+            cache_folder=r"D:\Chatman_Retrieval\model_cache\huggingface\hub",
+        )
 
         chroma_client    = chromadb.PersistentClient(path=CHROMA_PATH)
         self._collection = chroma_client.get_or_create_collection(

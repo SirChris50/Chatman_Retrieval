@@ -13,3 +13,6 @@ retrieval.db
 # Python cache
 __pycache__/
 *.py[cod]
+
+# HuggingFace model cache
+model_cache/

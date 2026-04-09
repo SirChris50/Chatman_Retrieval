@@ -3,6 +3,8 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+print(f"[DEBUG] HF_HOME = {os.environ.get('HF_HOME')!r}", flush=True)
+
 from flask import Flask, request, jsonify, render_template
 try:
     from retrieval_engine import engine          # python app/app.py
