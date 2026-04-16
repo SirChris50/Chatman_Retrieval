@@ -14,14 +14,25 @@ try:
 except ImportError:
     from app.retrieval_engine import engine      # python -m app.app
 
-app = Flask(__name__, template_folder="../templates", static_folder="../static")
+if getattr(sys, 'frozen', False):
+    # Running inside PyInstaller bundle — bundled files live in sys._MEIPASS
+    _tmpl_dir   = os.path.join(sys._MEIPASS, "templates")
+    _static_dir = os.path.join(sys._MEIPASS, "static")
+else:
+    _tmpl_dir   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "templates")
+    _static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static")
+
+app = Flask(__name__, template_folder=_tmpl_dir, static_folder=_static_dir)
 app.secret_key = "chatman-retrieval-admin"
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
-_DATA_DIR    = os.path.join(os.path.dirname(__file__), "..", "data")
+if getattr(sys, 'frozen', False):
+    _DATA_DIR = os.path.join(os.path.dirname(sys.executable), "data")
+else:
+    _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
 DB_PATH      = os.path.join(_DATA_DIR, "retrieval.db")
 CSV_PATH     = os.path.join(_DATA_DIR, "import.csv")
 CSV_DONE     = os.path.join(_DATA_DIR, "import_done.csv")
@@ -38,15 +49,23 @@ def _import_csv_if_present():
     existing = {row[0].lower() for row in conn.execute("SELECT question FROM qa_pairs").fetchall()}
     imported = 0
     try:
-        with open(CSV_PATH, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                q = (row.get("question") or "").strip()
-                a = (row.get("answer") or "").strip()
-                if q and a and q.lower() not in existing:
-                    conn.execute("INSERT INTO qa_pairs (question, answer) VALUES (?, ?)", (q, a))
-                    existing.add(q.lower())
-                    imported += 1
+        for encoding in ("utf-8", "latin-1"):
+            try:
+                with open(CSV_PATH, newline="", encoding=encoding) as f:
+                    reader = csv.DictReader(f)
+                    rows = list(reader)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            raise ValueError("Could not decode CSV with utf-8 or latin-1")
+        for row in rows:
+            q = (row.get("question") or "").strip()
+            a = (row.get("answer") or "").strip()
+            if q and a and q.lower() not in existing:
+                conn.execute("INSERT INTO qa_pairs (question, answer) VALUES (?, ?)", (q, a))
+                existing.add(q.lower())
+                imported += 1
         conn.commit()
     finally:
         conn.close()

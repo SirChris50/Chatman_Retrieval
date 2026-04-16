@@ -132,3 +132,150 @@ KEY FILES QUICK REFERENCE
 ====================================================================
 END OF SUMMARY
 ====================================================================
+
+
+====================================================================
+CHATMAN RETRIEVAL SYSTEM — SESSION SUMMARY
+Session Date: 2026-04-16
+====================================================================
+
+--------------------------------------------------------------------
+WHAT WAS COMPLETED THIS SESSION
+--------------------------------------------------------------------
+
+1. CHAT UI — templates\index.html + static\style.css
+   - Full browser-based chat interface
+   - Sends queries to POST /query via fetch, displays answer bubbles
+   - Shows confidence score and matched question below each response
+   - Polite no-match message displayed when confidence < threshold
+   - Responsive layout; works locally at http://127.0.0.1:5000
+
+2. FLASK APP — app\app.py
+   - GET  /         → serves chat UI (index.html)
+   - POST /query    → accepts JSON {"query": "..."}, returns engine result
+   - GET  /admin    → admin page (add/delete QA pairs, trigger CSV import)
+   - POST /add      → insert a new QA pair, reloads engine
+   - POST /delete/<id> → remove a QA pair by ID, reloads engine
+   - POST /import-csv  → bulk import from data\import.csv
+   - OpenMP env vars set at app startup to prevent Windows thread deadlock
+
+3. ADMIN PAGE — templates\admin.html
+   - Lists all current QA pairs in a table with delete buttons
+   - Form to add a single new QA pair (question + answer)
+   - CSV import button triggers bulk load from data\import.csv
+   - No authentication (local-only tool — not exposed to internet)
+
+4. CSV IMPORT FEATURE
+   - Drop a file at data\import.csv with columns: question, answer
+   - Hit "Import CSV" on admin page → rows inserted, duplicates skipped
+   - Completed imports moved to data\import_done.csv (timestamped)
+   - Engine reloads automatically after import to sync ChromaDB
+
+5. MATH / CALCULATION FEATURE — app\retrieval_engine.py
+   - Queries that look like math expressions (e.g. "what is 12 * 15?")
+     are evaluated before hitting the retrieval pipeline
+   - Uses Python ast.literal_eval-safe expression parser — no eval()
+   - Supported: +  -  *  /  **  ()  and standard operator precedence
+   - Returns computed result directly; does not search the database
+
+6. IDENTITY QA PAIRS — data\retrieval.db
+   - Permanent rows added covering "who are you", "what is your name",
+     "who made you", "are you a robot", "what can you do", etc.
+   - Marked with source='identity' to distinguish from user-added rows
+   - These rows are excluded from CSV-import duplicate checks
+
+7. THUMB DRIVE INSTALLER — installer\
+   - installer\INSTALL.bat
+       * Creates D:\Chatman_Retrieval\ if it doesn't exist
+       * Copies app files from thumb drive to destination
+       * Runs pip install -r requirements.txt using bundled packages
+         from a local \packages\ folder (no internet needed)
+       * Creates a desktop shortcut pointing to launch.bat
+   - installer\launch.bat  — activates venv and starts Flask server
+   - build.bat             — packages the project into ChatmanRetrieval_Installer.zip
+   - chatman_retrieval.spec — PyInstaller spec (kept for reference)
+   - ChatmanRetrieval_Installer.zip — the distributable archive
+
+8. GITHUB SETUP
+   - Repository: https://github.com/SirChris50/Chatman_Retrieval
+   - Branch: master
+   - .gitignore excludes: retrieval_env/, data/chroma_store/,
+     data/retrieval.db, model_cache/, __pycache__/, *.pyc
+   - All session work committed and pushed
+
+
+--------------------------------------------------------------------
+CURRENT PROJECT STRUCTURE
+--------------------------------------------------------------------
+
+D:\Chatman_Retrieval\
+├── app\
+│   ├── app.py                  Flask app — all routes
+│   └── retrieval_engine.py     Retrieval engine + math evaluator
+├── data\
+│   ├── retrieval.db            SQLite — qa_pairs table
+│   ├── chroma_store\           ChromaDB persistent embeddings (gitignored)
+│   ├── init_db.py              Seed script
+│   ├── import.csv              Drop CSV here to bulk import
+│   └── import_done.csv         Completed import archive
+├── installer\
+│   ├── INSTALL.bat             Thumb drive installer script
+│   └── launch.bat              Launch shortcut (venv + Flask)
+├── retrieval_env\              Python 3.13.3 venv (gitignored)
+├── static\
+│   └── style.css               Chat UI styles
+├── templates\
+│   ├── index.html              Chat UI
+│   └── admin.html              Admin panel
+├── build.bat                   Packages project into installer zip
+├── chatman_retrieval.spec      PyInstaller spec
+├── ChatmanRetrieval_Installer.zip  Distributable installer
+├── launch.bat                  Root-level launch shortcut
+├── run.py                      Entry point (python run.py)
+├── requirements.txt            pip dependencies
+└── Master_Text.txt             This file
+
+
+--------------------------------------------------------------------
+WHAT WORKS (CONFIRMED)
+--------------------------------------------------------------------
+
+   [OK] Chat UI — queries answered in browser, confidence shown
+   [OK] Admin page — add, delete, CSV import all functional
+   [OK] Math/calculation queries evaluated without hitting DB
+   [OK] Identity QA pairs — "who are you" etc. answered correctly
+   [OK] CSV bulk import with duplicate skip and archive
+   [OK] Thumb drive installer — tested, installs without internet
+   [OK] GitHub repo — all code pushed to master
+   [OK] Retrieval engine — semantic + fuzzy blend, threshold 0.45
+
+
+--------------------------------------------------------------------
+WHAT STILL NEEDS TO BE DONE (FUTURE SESSIONS)
+--------------------------------------------------------------------
+
+   - Add authentication to admin page if system moves off local-only
+   - Tune CONFIDENCE_THRESHOLD if edge-case matches drift
+   - Expand QA dataset (more rows = better semantic coverage)
+   - Optional: package as a Windows .exe with PyInstaller for
+     truly zero-dependency deployment
+
+
+--------------------------------------------------------------------
+KEY FILES QUICK REFERENCE
+--------------------------------------------------------------------
+
+  app\app.py                — Flask routes (start here for backend changes)
+  app\retrieval_engine.py   — Engine + math evaluator
+  templates\index.html      — Chat UI
+  templates\admin.html      — Admin panel
+  data\retrieval.db         — SQLite database
+  data\chroma_store\        — ChromaDB store (auto-created, gitignored)
+  data\import.csv           — Drop CSV here for bulk import
+  installer\INSTALL.bat     — Thumb drive installer
+  run.py                    — Start server: python run.py
+  requirements.txt          — pip install -r requirements.txt
+
+====================================================================
+END OF SUMMARY
+====================================================================

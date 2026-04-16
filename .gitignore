@@ -16,3 +16,13 @@ __pycache__/
 
 # HuggingFace model cache
 model_cache/
+
+# PyInstaller output
+dist/
+build/
+*.spec.bak
+
+# Installer build artifacts (large — pre-baked Python env, generated package)
+build_cache/
+ChatmanRetrieval_Setup/
+ChatmanRetrieval_Installer.zip
